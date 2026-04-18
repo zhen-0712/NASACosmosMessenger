@@ -2,10 +2,9 @@ package com.example.line_dev.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
-
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+val WinterGray = Color(0xFF394045)
+val IceBlue = Color(0xFF5d696d)
+val SilverMilk = Color(0xFFa0b2c7)
+val SilverMilkLight = Color(0xFFc1c2c2)
+val SoftWhite = Color(0xFFe5e8eb)
+val White = Color(0xFFFFFFFF)

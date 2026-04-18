@@ -5,10 +5,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -36,18 +38,35 @@ fun MainScreen() {
 
     Scaffold(
         bottomBar = {
-            NavigationBar {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = androidx.compose.ui.unit.Dp(0f)
+            ) {
                 NavigationBarItem(
                     selected = currentRoute == "chat",
                     onClick = { navController.navigate("chat") },
-                    icon = { Icon(painterResource(android.R.drawable.ic_menu_send), contentDescription = "Nova") },
-                    label = { Text("Nova") }
+                    icon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Nova") },
+                    label = { Text("Nova") },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                        indicatorColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f),
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 )
                 NavigationBarItem(
                     selected = currentRoute == "favorites",
                     onClick = { navController.navigate("favorites") },
-                    icon = { Icon(painterResource(android.R.drawable.btn_star_big_on), contentDescription = "收藏") },
-                    label = { Text("收藏") }
+                    icon = { Icon(Icons.Filled.Favorite, contentDescription = "收藏") },
+                    label = { Text("收藏") },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                        indicatorColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f),
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 )
             }
         }
