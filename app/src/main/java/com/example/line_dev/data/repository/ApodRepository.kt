@@ -5,7 +5,7 @@ import com.example.line_dev.data.remote.RetrofitInstance
 
 class ApodRepository {
     private val api = RetrofitInstance.api
-    private val apiKey = "MQfkHXRZCPoZ0tTSag3y6vg3LxfNNJOdeNoFuDR9"
+    private val apiKey = com.example.line_dev.BuildConfig.NASA_API_KEY
 
     suspend fun getApod(date: String? = null): Result<ApodResponse> {
       return try {
