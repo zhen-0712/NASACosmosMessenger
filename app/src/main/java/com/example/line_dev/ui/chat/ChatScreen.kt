@@ -1,19 +1,27 @@
 package com.example.line_dev.ui.chat
 
+import android.app.DatePickerDialog
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -23,9 +31,7 @@ import com.example.line_dev.data.model.ChatMessage
 import com.example.line_dev.ui.theme.*
 import com.example.line_dev.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.input.pointer.pointerInput
+import java.util.Calendar
 
 @Composable
 fun ChatScreen(chatViewModel: ChatViewModel = viewModel()) {
@@ -34,16 +40,17 @@ fun ChatScreen(chatViewModel: ChatViewModel = viewModel()) {
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
-
-    LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) {
-            coroutineScope.launch {
-                listState.animateScrollToItem(messages.size - 1)
-            }
-        }
-    }
-
     val keyboardController = LocalSoftwareKeyboardController.current
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo }
+            .collect {
+                if (messages.isNotEmpty()) {
+                    listState.animateScrollToItem(messages.size - 1)
+                }
+            }
+    }
 
     Column(
         modifier = Modifier
@@ -82,9 +89,13 @@ fun ChatScreen(chatViewModel: ChatViewModel = viewModel()) {
             }
             if (isLoading) {
                 item {
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        NovaAvatar()
                         CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(18.dp),
                             color = MaterialTheme.colorScheme.tertiary,
                             strokeWidth = 2.dp
                         )
@@ -100,7 +111,7 @@ fun ChatScreen(chatViewModel: ChatViewModel = viewModel()) {
             modifier = Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surface)
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+                .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             OutlinedTextField(
@@ -125,12 +136,37 @@ fun ChatScreen(chatViewModel: ChatViewModel = viewModel()) {
                 maxLines = 3,
                 textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            // 日曆按鈕
+            IconButton(
+                onClick = {
+                    keyboardController?.hide()
+                    val calendar = Calendar.getInstance()
+                    DatePickerDialog(
+                        context,
+                        { _, year, month, day ->
+                            val dateStr = "%d/%02d/%02d".format(year, month + 1, day)
+                            inputText = dateStr
+                        },
+                        calendar.get(Calendar.YEAR),
+                        calendar.get(Calendar.MONTH),
+                        calendar.get(Calendar.DAY_OF_MONTH)
+                    ).show()
+                }
+            ) {
+                Icon(
+                    Icons.Filled.DateRange,
+                    contentDescription = "選擇日期",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            // 傳送按鈕
             IconButton(
                 onClick = {
                     if (inputText.isNotBlank()) {
                         chatViewModel.sendMessage(inputText)
                         inputText = ""
+                        keyboardController?.hide()
                     }
                 }
             ) {
@@ -145,71 +181,99 @@ fun ChatScreen(chatViewModel: ChatViewModel = viewModel()) {
 }
 
 @Composable
-fun ChatBubble(message: ChatMessage) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = if (message.isUser) Alignment.End else Alignment.Start
+fun NovaAvatar() {
+    Box(
+        modifier = Modifier
+            .size(32.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f)),
+        contentAlignment = Alignment.Center
     ) {
-        if (!message.isUser && message.apod != null && message.apod.mediaType == "image") {
-            // Nova 帶圖片的訊息
-            Column(
-                modifier = Modifier
-                    .widthIn(max = 280.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = message.content,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 14.sp
-                )
-                AsyncImage(
-                    model = message.apod.url,
-                    contentDescription = message.apod.title,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .clip(RoundedCornerShape(12.dp)),
-                    contentScale = ContentScale.Crop
-                )
-                Text(
-                    text = message.apod.title,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = message.apod.date,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 11.sp
-                )
-            }
-        } else {
-            // 一般文字訊息
+        Icon(
+            Icons.Filled.Face,
+            contentDescription = "Nova",
+            tint = MaterialTheme.colorScheme.secondary,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+fun ChatBubble(message: ChatMessage) {
+    if (message.isUser) {
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.CenterEnd
+        ) {
             Box(
                 modifier = Modifier
-                    .widthIn(max = 280.dp)
-                    .clip(
-                        RoundedCornerShape(
-                            topStart = 16.dp,
-                            topEnd = 16.dp,
-                            bottomStart = if (message.isUser) 16.dp else 4.dp,
-                            bottomEnd = if (message.isUser) 4.dp else 16.dp
-                        )
-                    )
-                    .background(
-                        if (message.isUser) MaterialTheme.colorScheme.tertiary
-                        else MaterialTheme.colorScheme.surface
-                    )
+                    .widthIn(max = 260.dp)
+                    .clip(RoundedCornerShape(16.dp, 16.dp, 4.dp, 16.dp))
+                    .background(MaterialTheme.colorScheme.tertiary)
                     .padding(horizontal = 14.dp, vertical = 10.dp)
             ) {
                 Text(
                     text = message.content,
-                    color = if (message.isUser) White else MaterialTheme.colorScheme.onSurface,
+                    color = White,
                     fontSize = 14.sp
                 )
+            }
+        }
+    } else {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            NovaAvatar()
+            if (message.apod != null && message.apod.mediaType == "image") {
+                Column(
+                    modifier = Modifier
+                        .widthIn(max = 260.dp)
+                        .clip(RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = message.content,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 14.sp
+                    )
+                    AsyncImage(
+                        model = message.apod.url,
+                        contentDescription = message.apod.title,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .clip(RoundedCornerShape(10.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                    Text(
+                        text = message.apod.title,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = message.apod.date,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 11.sp
+                    )
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .widthIn(max = 260.dp)
+                        .clip(RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(horizontal = 14.dp, vertical = 10.dp)
+                ) {
+                    Text(
+                        text = message.content,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 14.sp
+                    )
+                }
             }
         }
     }
