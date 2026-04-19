@@ -5,12 +5,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Nightlight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.navigation.compose.NavHost
@@ -28,7 +27,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 監聽鍵盤狀態
         ViewCompat.setOnApplyWindowInsetsListener(window.decorView) { view, insets ->
             isKeyboardOpen = insets.isVisible(WindowInsetsCompat.Type.ime())
             ViewCompat.onApplyWindowInsets(view, insets)
@@ -57,7 +55,7 @@ fun MainScreen(isKeyboardOpen: Boolean = false) {
                     NavigationBarItem(
                         selected = currentRoute == "chat",
                         onClick = { navController.navigate("chat") },
-                        icon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Nova") },
+                        icon = { Icon(Icons.Filled.Nightlight, contentDescription = "Nova") },
                         label = { Text("Nova") },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = MaterialTheme.colorScheme.primary,

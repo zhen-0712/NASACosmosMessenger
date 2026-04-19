@@ -13,6 +13,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -33,19 +35,27 @@ fun FavoritesScreen(favoritesViewModel: FavoritesViewModel = viewModel()) {
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // TopBar
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surface)
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
-            Text(
-                text = "收藏",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary
-            )
+            Column {
+                Text(
+                    text = "收藏",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                if (favorites.isNotEmpty()) {
+                    Text(
+                        text = "${favorites.size} 張天文圖",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
 
         HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 0.5.dp)
@@ -60,13 +70,14 @@ fun FavoritesScreen(favoritesViewModel: FavoritesViewModel = viewModel()) {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "還沒有收藏",
+                        text = "星空收藏夾是空的",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 16.sp
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium
                     )
                     Text(
-                        text = "長按聊天室中的天文圖片可加入收藏",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = "長按聊天室中的天文圖片加入收藏",
+                        color = MaterialTheme.colorScheme.outline,
                         fontSize = 13.sp
                     )
                 }
@@ -99,7 +110,7 @@ fun FavoriteCard(entity: FavoriteEntity, onDelete: () -> Unit) {
             onDismissRequest = { showDialog = false },
             title = {
                 Text(
-                    text = "刪除收藏",
+                    text = "移除收藏",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary
@@ -107,7 +118,7 @@ fun FavoriteCard(entity: FavoriteEntity, onDelete: () -> Unit) {
             },
             text = {
                 Text(
-                    text = "確定要刪除「${entity.title}」嗎？",
+                    text = "確定要移除這張天文圖嗎？",
                     color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 14.sp
                 )
@@ -117,7 +128,7 @@ fun FavoriteCard(entity: FavoriteEntity, onDelete: () -> Unit) {
                     onDelete()
                     showDialog = false
                 }) {
-                    Text("刪除", color = MaterialTheme.colorScheme.primary)
+                    Text("移除", color = MaterialTheme.colorScheme.primary)
                 }
             },
             dismissButton = {
@@ -125,62 +136,85 @@ fun FavoriteCard(entity: FavoriteEntity, onDelete: () -> Unit) {
                     Text("取消", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(16.dp)
         )
     }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column {
-            Box {
-                AsyncImage(
-                    model = entity.url,
-                    contentDescription = entity.title,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(130.dp)
-                        .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
-                    contentScale = ContentScale.Crop
-                )
-                IconButton(
-                    onClick = { showDialog = true },
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(4.dp)
-                        .size(32.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                            shape = RoundedCornerShape(8.dp)
+        Box {
+            AsyncImage(
+                model = entity.url,
+                contentDescription = entity.title,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+                    .clip(RoundedCornerShape(14.dp)),
+                contentScale = ContentScale.Crop
+            )
+
+            // 漸層遮罩
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Transparent,
+                                WinterGray.copy(alpha = 0.5f),
+                                WinterGray.copy(alpha = 0.85f)
+                            )
                         )
-                ) {
-                    Icon(
-                        Icons.Filled.Delete,
-                        contentDescription = "刪除",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp)
                     )
-                }
+            )
+
+            // 刪除按鈕
+            IconButton(
+                onClick = { showDialog = true },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(6.dp)
+                    .size(28.dp)
+                    .background(
+                        color = WinterGray.copy(alpha = 0.4f),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+            ) {
+                Icon(
+                    Icons.Filled.Delete,
+                    contentDescription = "移除",
+                    tint = White.copy(alpha = 0.9f),
+                    modifier = Modifier.size(14.dp)
+                )
             }
+
+            // 標題 + 日期
             Column(
-                modifier = Modifier.padding(10.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(10.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
                     text = entity.title,
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold,
+                    color = White,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = entity.date,
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    fontSize = 10.sp,
+                    color = White.copy(alpha = 0.75f)
                 )
             }
         }
