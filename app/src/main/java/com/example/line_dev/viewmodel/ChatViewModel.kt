@@ -49,8 +49,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     "那天宇宙長這樣..."
                 }
                 appendMessage(ChatMessage(content = content, isUser = false, apod = apod))
-            }.onFailure {
-                addNovaMessage("抱歉，無法取得資料，請確認日期格式或網路連線。")
+            }.onFailure { e ->
+                addNovaMessage(e.message ?: "抱歉，無法取得資料，請確認日期格式或網路連線。")
             }
             _isLoading.value = false
         }

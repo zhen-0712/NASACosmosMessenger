@@ -8,11 +8,17 @@ class ApodRepository {
     private val apiKey = "MQfkHXRZCPoZ0tTSag3y6vg3LxfNNJOdeNoFuDR9"
 
     suspend fun getApod(date: String? = null): Result<ApodResponse> {
-        return try {
-            val response = api.getApod(apiKey = apiKey, date = date)
-            Result.success(response)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
+      return try {
+          val response = api.getApod(apiKey = apiKey, date = date)
+          Result.success(response)
+      } catch (e: retrofit2.HttpException) {
+          if (e.code() == 400) {
+              Result.failure(Exception("日期須介於 1995/06/16 至今"))
+          } else {
+              Result.failure(e)
+          }
+      } catch (e: Exception) {
+          Result.failure(e)
+      }
+  }
 }
