@@ -2,6 +2,7 @@ package com.example.line_dev.ui.chat
 
 import android.app.DatePickerDialog
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -37,144 +38,157 @@ import java.util.Calendar
 fun ChatScreen(chatViewModel: ChatViewModel = viewModel()) {
     val messages by chatViewModel.messages.collectAsState()
     val isLoading by chatViewModel.isLoading.collectAsState()
+    val snackbarMessage by chatViewModel.snackbarMessage.collectAsState()
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
     val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(Unit) {
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo }
-            .collect {
-                if (messages.isNotEmpty()) {
-                    listState.animateScrollToItem(messages.size - 1)
-                }
-            }
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) {
+            listState.animateScrollToItem(messages.size - 1)
+        }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .pointerInput(Unit) {
-                detectTapGestures(onTap = { keyboardController?.hide() })
-            }
-    ) {
-        // TopBar
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(horizontal = 20.dp, vertical = 16.dp)
-        ) {
-            Text(
-                text = "Nova",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary
-            )
+    LaunchedEffect(snackbarMessage) {
+        snackbarMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            chatViewModel.clearSnackbar()
         }
+    }
 
-        HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 0.5.dp)
-
-        // Messages
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(messages) { message ->
-                ChatBubble(message = message)
-            }
-            if (isLoading) {
-                item {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        NovaAvatar()
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            color = MaterialTheme.colorScheme.tertiary,
-                            strokeWidth = 2.dp
-                        )
-                    }
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { scaffoldPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(scaffoldPadding)
+                .background(MaterialTheme.colorScheme.background)
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = { keyboardController?.hide() })
                 }
-            }
-        }
-
-        HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 0.5.dp)
-
-        // Input
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
         ) {
-            OutlinedTextField(
-                value = inputText,
-                onValueChange = { inputText = it },
+            // TopBar
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
+            ) {
+                Text(
+                    text = "Nova",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 0.5.dp)
+
+            // Messages
+            LazyColumn(
+                state = listState,
                 modifier = Modifier.weight(1f),
-                placeholder = {
-                    Text(
-                        "輸入日期或訊息...",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 14.sp
-                    )
-                },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.tertiary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                    cursorColor = MaterialTheme.colorScheme.primary
-                ),
-                shape = RoundedCornerShape(24.dp),
-                maxLines = 3,
-                textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            // 日曆按鈕
-            IconButton(
-                onClick = {
-                    keyboardController?.hide()
-                    val calendar = Calendar.getInstance()
-                    DatePickerDialog(
-                        context,
-                        { _, year, month, day ->
-                            val dateStr = "%d/%02d/%02d".format(year, month + 1, day)
-                            inputText = dateStr
-                        },
-                        calendar.get(Calendar.YEAR),
-                        calendar.get(Calendar.MONTH),
-                        calendar.get(Calendar.DAY_OF_MONTH)
-                    ).show()
-                }
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(
-                    Icons.Filled.DateRange,
-                    contentDescription = "選擇日期",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            // 傳送按鈕
-            IconButton(
-                onClick = {
-                    if (inputText.isNotBlank()) {
-                        chatViewModel.sendMessage(inputText)
-                        inputText = ""
-                        keyboardController?.hide()
+                items(messages) { message ->
+                    ChatBubble(
+                        message = message,
+                        onLongPress = { apod ->
+                            chatViewModel.saveFavorite(apod)
+                        }
+                    )
+                }
+                if (isLoading) {
+                    item {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            NovaAvatar()
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                color = MaterialTheme.colorScheme.tertiary,
+                                strokeWidth = 2.dp
+                            )
+                        }
                     }
                 }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 0.5.dp)
+
+            // Input
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.Send,
-                    contentDescription = "Send",
-                    tint = MaterialTheme.colorScheme.primary
+                OutlinedTextField(
+                    value = inputText,
+                    onValueChange = { inputText = it },
+                    modifier = Modifier.weight(1f),
+                    placeholder = {
+                        Text(
+                            "輸入日期或訊息...",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 14.sp
+                        )
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.tertiary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        cursorColor = MaterialTheme.colorScheme.primary
+                    ),
+                    shape = RoundedCornerShape(24.dp),
+                    maxLines = 3,
+                    textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
                 )
+                Spacer(modifier = Modifier.width(4.dp))
+                IconButton(
+                    onClick = {
+                        keyboardController?.hide()
+                        val calendar = Calendar.getInstance()
+                        DatePickerDialog(
+                            context,
+                            { _, year, month, day ->
+                                inputText = "%d/%02d/%02d".format(year, month + 1, day)
+                            },
+                            calendar.get(Calendar.YEAR),
+                            calendar.get(Calendar.MONTH),
+                            calendar.get(Calendar.DAY_OF_MONTH)
+                        ).show()
+                    }
+                ) {
+                    Icon(
+                        Icons.Filled.DateRange,
+                        contentDescription = "選擇日期",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(
+                    onClick = {
+                        if (inputText.isNotBlank()) {
+                            chatViewModel.sendMessage(inputText)
+                            inputText = ""
+                            keyboardController?.hide()
+                        }
+                    }
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Send,
+                        contentDescription = "Send",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
     }
@@ -198,8 +212,12 @@ fun NovaAvatar() {
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-fun ChatBubble(message: ChatMessage) {
+fun ChatBubble(
+    message: ChatMessage,
+    onLongPress: (com.example.line_dev.data.model.ApodResponse) -> Unit
+) {
     if (message.isUser) {
         Box(
             modifier = Modifier.fillMaxWidth(),
@@ -212,11 +230,7 @@ fun ChatBubble(message: ChatMessage) {
                     .background(MaterialTheme.colorScheme.tertiary)
                     .padding(horizontal = 14.dp, vertical = 10.dp)
             ) {
-                Text(
-                    text = message.content,
-                    color = White,
-                    fontSize = 14.sp
-                )
+                Text(text = message.content, color = White, fontSize = 14.sp)
             }
         }
     } else {
@@ -231,6 +245,10 @@ fun ChatBubble(message: ChatMessage) {
                         .widthIn(max = 260.dp)
                         .clip(RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp))
                         .background(MaterialTheme.colorScheme.surface)
+                        .combinedClickable(
+                            onClick = {},
+                            onLongClick = { onLongPress(message.apod) }
+                        )
                         .padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
