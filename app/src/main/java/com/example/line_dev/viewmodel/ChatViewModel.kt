@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 
 class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val apodRepository = ApodRepository()
+    private val apodRepository = ApodRepository(application)
     private val favoriteRepository = FavoriteRepository(application)
 
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
