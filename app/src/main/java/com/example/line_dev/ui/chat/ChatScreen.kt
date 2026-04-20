@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Nightlight
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +23,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -32,7 +34,10 @@ import coil.compose.AsyncImage
 import com.example.line_dev.data.model.ApodResponse
 import com.example.line_dev.data.model.ChatMessage
 import com.example.line_dev.ui.theme.*
+import com.example.line_dev.utils.ShareUtils
+import com.example.line_dev.utils.StarCardGenerator
 import com.example.line_dev.viewmodel.ChatViewModel
+import kotlinx.coroutines.launch
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,6 +52,8 @@ fun ChatScreen(chatViewModel: ChatViewModel = viewModel()) {
     val snackbarHostState = remember { SnackbarHostState() }
     var showDatePicker by remember { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState()
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
@@ -187,7 +194,23 @@ fun ChatScreen(chatViewModel: ChatViewModel = viewModel()) {
                 items(messages) { message ->
                     ChatBubble(
                         message = message,
-                        onLongPress = { apod -> chatViewModel.saveFavorite(apod) }
+                        onLongPress = { apod -> chatViewModel.saveFavorite(apod) },
+                        onShare = { apod ->
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar("正在產生星空卡...")
+                                val file = StarCardGenerator.generateStarCard(
+                                    context = context,
+                                    imageUrl = apod.url,
+                                    title = apod.title,
+                                    date = apod.date
+                                )
+                                if (file != null) {
+                                    ShareUtils.shareStarCard(context, file, apod.title, apod.date)
+                                } else {
+                                    snackbarHostState.showSnackbar("星空卡產生失敗，請稍後再試")
+                                }
+                            }
+                        }
                     )
                 }
                 if (isLoading) {
@@ -309,7 +332,8 @@ fun NovaAvatar() {
 @Composable
 fun ChatBubble(
     message: ChatMessage,
-    onLongPress: (ApodResponse) -> Unit
+    onLongPress: (ApodResponse) -> Unit,
+    onShare: (ApodResponse) -> Unit
 ) {
     if (message.isUser) {
         Box(
@@ -366,6 +390,7 @@ fun ChatBubble(
                                 .clip(RoundedCornerShape(10.dp)),
                             contentScale = ContentScale.Crop
                         )
+                        // 長按收藏提示
                         Box(
                             modifier = Modifier
                                 .align(Alignment.BottomEnd)
@@ -383,19 +408,35 @@ fun ChatBubble(
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Bottom
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = message.apod.title,
-                            color = WinterGray,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = message.apod.date, color = SilverMilk, fontSize = 10.sp)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = message.apod.title,
+                                color = WinterGray,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = message.apod.date,
+                                color = SilverMilk,
+                                fontSize = 10.sp
+                            )
+                        }
+                        // 分享星空卡按鈕
+                        IconButton(
+                            onClick = { onShare(message.apod) },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Filled.Share,
+                                contentDescription = "分享星空卡",
+                                tint = SilverMilk,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                 }
             } else {
