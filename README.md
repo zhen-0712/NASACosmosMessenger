@@ -1,4 +1,4 @@
-# NASA Cosmos Messenger 🌌
+# NASA Cosmos Messenger 
 
 A conversational Android app where users can chat with **Nova**, an AI assistant that reveals what the universe looked like on any date — powered by NASA's Astronomy Picture of the Day (APOD) API.
 
