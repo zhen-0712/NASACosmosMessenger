@@ -1,4 +1,4 @@
-package com.example.line_dev
+package com.example.line_dev.parser
 
 import com.example.line_dev.data.model.DateParser
 import org.junit.Assert.*
