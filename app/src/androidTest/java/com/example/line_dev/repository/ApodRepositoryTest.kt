@@ -7,10 +7,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.line_dev.data.local.AppDatabase
 import com.example.line_dev.data.local.ApodCacheEntity
 import com.example.line_dev.data.model.ApodResponse
-import com.example.line_dev.data.remote.NasaApiService
-import com.example.line_dev.data.repository.ApodRepository
-import io.mockk.coEvery
-import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -24,7 +20,6 @@ import org.junit.runner.RunWith
 class ApodRepositoryTest {
 
     private lateinit var db: AppDatabase
-    private lateinit var repository: TestableApodRepository
 
     private val fakeApod = ApodResponse(
         date = "1995-06-20",
@@ -42,7 +37,6 @@ class ApodRepositoryTest {
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repository = TestableApodRepository(db)
     }
 
     @After
@@ -51,15 +45,10 @@ class ApodRepositoryTest {
     }
 
     @Test
-    fun getApod_success_returns_apod_and_caches_it() = runTest {
-        repository.mockApiResult = Result.success(fakeApod)
-
-        val result = repository.getApod("1995-06-20")
-
+    fun getApod_success_caches_result() = runTest {
+        val repo = FakeApodRepository(db, Result.success(fakeApod))
+        val result = repo.getApod("1995-06-20")
         assertTrue(result.isSuccess)
-        assertEquals("1995-06-20", result.getOrNull()?.date)
-
-        // 確認有存進快取
         val cached = db.apodCacheDao().getCacheByDate("1995-06-20")
         assertNotNull(cached)
         assertEquals("Test Star", cached?.title)
@@ -67,7 +56,6 @@ class ApodRepositoryTest {
 
     @Test
     fun getApod_failure_falls_back_to_cache() = runTest {
-        // 先存一筆快取
         db.apodCacheDao().insertCache(
             ApodCacheEntity(
                 date = "1995-06-20",
@@ -79,22 +67,16 @@ class ApodRepositoryTest {
                 copyright = null
             )
         )
-
-        // 模擬網路失敗
-        repository.mockApiResult = Result.failure(Exception("no network"))
-
-        val result = repository.getApod("1995-06-20")
-
+        val repo = FakeApodRepository(db, Result.failure(Exception("no network")))
+        val result = repo.getApod("1995-06-20")
         assertTrue(result.isSuccess)
         assertEquals("Cached Star", result.getOrNull()?.title)
     }
 
     @Test
     fun getApod_failure_with_no_cache_returns_error() = runTest {
-        repository.mockApiResult = Result.failure(Exception("no network"))
-
-        val result = repository.getApod("2099-01-01")
-
+        val repo = FakeApodRepository(db, Result.failure(Exception("no network")))
+        val result = repo.getApod("2099-01-01")
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull()?.message?.contains("快取") == true)
     }
@@ -113,27 +95,22 @@ class ApodRepositoryTest {
                 cachedAt = 9999L
             )
         )
-        repository.mockApiResult = Result.failure(Exception("no network"))
-
-        val result = repository.getApod(null)
-
+        val repo = FakeApodRepository(db, Result.failure(Exception("no network")))
+        val result = repo.getApod(null)
         assertTrue(result.isSuccess)
         assertEquals("Latest Cache", result.getOrNull()?.title)
     }
 }
 
-/**
- * Testable version of ApodRepository with injectable mock API result
- */
-class TestableApodRepository(private val db: AppDatabase) {
-
-    var mockApiResult: Result<ApodResponse> = Result.failure(Exception("not set"))
-
+class FakeApodRepository(
+    private val db: AppDatabase,
+    private val mockResult: Result<ApodResponse>
+) {
     private val cacheDao = db.apodCacheDao()
 
     suspend fun getApod(date: String?): Result<ApodResponse> {
         return try {
-            val response = mockApiResult.getOrThrow()
+            val response = mockResult.getOrThrow()
             cacheDao.insertCache(
                 ApodCacheEntity(
                     date = response.date,
@@ -149,7 +126,6 @@ class TestableApodRepository(private val db: AppDatabase) {
         } catch (e: Exception) {
             val cached = if (date != null) cacheDao.getCacheByDate(date)
             else cacheDao.getLatestCache()
-
             if (cached != null) {
                 Result.success(
                     ApodResponse(
