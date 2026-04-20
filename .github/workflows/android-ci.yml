@@ -43,6 +43,8 @@ jobs:
   instrumented-test:
     name: Instrumented Tests
     runs-on: ubuntu-latest
+    # 只在 PR 到 main 時跑
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
 
     steps:
       - name: Checkout code
@@ -56,9 +58,6 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-
-      - name: Grant execute permission for gradlew
-        uses: actions/checkout@v4
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
