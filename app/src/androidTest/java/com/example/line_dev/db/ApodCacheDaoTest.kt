@@ -18,7 +18,7 @@ import org.junit.runner.RunWith
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(AndroidJUnit4::class)
-class FavoriteDaoTest {
+class ApodCacheDaoTest {
 
     private lateinit var db: AppDatabase
     private lateinit var dao: FavoriteDao
